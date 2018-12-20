@@ -5,25 +5,21 @@
 #include <ctime>
 #include <time.h>
 #include "parser.h"
-#include "C:\Users\alsol\source\repos\MPI_Trapezoid_Method\MPI_Trapezoid_Method\parser.cpp"
+#include "C:\Users\alsol\source\repos\ParallelProgTest\ParallelProgTest\parser.cpp"
+
 using namespace std;
 
-
 double val_func(double x1, double x2, char* formula, TParser *parser, double *x) {
-	//TParser parser;
-	//static double x[10];
-	//parser.SetX((double *)&x);
 	x[0] = x1;
 	x[1] = x2;
-	//parser->Compile(formula);
 	parser->Evaluate();
 	return parser->GetResult();
-	//return 1;
+	//return exp(x1);
 }
 
 void two_dimensional_integral(const double a1, const double b1, const double a2,
 	const double b2, const double h, double *res, char* func, TParser *parser, double *x)
-{	
+{
 	double sum;
 	double midval;
 	sum = 0.0;
@@ -32,9 +28,19 @@ void two_dimensional_integral(const double a1, const double b1, const double a2,
 	{
 		for (double j = a2; j < b2; j += h)
 		{
-			midval = (val_func(i, j, func, parser, x) + val_func(i + h, j, func, parser, x) + val_func(i, j + h, func, parser, x) + val_func(i + h, j + h, func, parser, x)) / 4;
-			sum += midval * h * h;
+			double a = val_func(i, j, func, parser, x);
+			double b = val_func(i + h, j, func, parser, x);
+			double c = val_func(i, j + h, func, parser, x);
+			double d = val_func(i + h, j + h, func, parser, x);
 
+			double min = std::fmin(std::fmin(a, std::fmin(b, c)), d);
+			double max = std::fmax(std::fmax(a, std::fmax(b, c)), d);
+
+			//double s1 = h * h * min;
+			//double h1 = max - min;
+
+			//sum += (s1 + s1 * h1 / 3);
+			sum += h * (max + min) * 0.5 * h;
 		}
 	}
 	*res = sum;
@@ -45,8 +51,8 @@ void one_dimensional_integral(const double a1, const double b1, const double h, 
 	double sum = 0.0;
 	double h_left, h_right;
 	for (double i = a1; i < b1; i += h) {
-		h_left = val_func(i, 0, func, parser, x);
-		h_right = val_func(i + h, 0, func, parser, x);
+		h_left = val_func(i, 0.0, func, parser, x);
+		h_right = val_func(i + h, 0.0, func, parser, x);
 		sum += ((h_right + h_left) / 2) * h;
 	}
 	*res = sum;
@@ -58,10 +64,10 @@ int main(int argc, char **argv)
 	double a1, b1, a2 = INFINITY, b2 = INFINITY, h;
 	a1 = 0.0;
 	b1 = 4.0;
-	a2 = 0.0;
-	b2 = 4.0;
+	//a2 = 0.0;
+	//b2 = 4.0;
 	h = 0.001;
-	const char* func = "x[0] * x[1]";
+	const char* func = "x[0]*x[1]";
 	double stepX, leftX, rightX, sum = 0.0;
 	double starttime, endtime;
 	int rank, process_num;
@@ -103,7 +109,7 @@ int main(int argc, char **argv)
 	leftX = rank * stepX;
 	rightX = leftX + stepX;
 
-	std::cout <<"hello. i'm "<< rank << " rank. " << "leftX: " << leftX << " rightX: " << rightX <<'\n';
+	//std::cout << "hello. i'm " << rank << " rank. " << "leftX: " << leftX << " rightX: " << rightX << '\n';
 	if (a2 == INFINITY || b2 == INFINITY) {
 		one_dimensional_integral(leftX, rightX, h, &res, const_cast<char *>(func), &parser, x); // Ñounting the value of the one dimensional integral
 	}
@@ -111,7 +117,7 @@ int main(int argc, char **argv)
 		two_dimensional_integral(leftX, rightX, a2, b2, h, &res, const_cast<char *>(func), &parser, x); // Ñounting the value of the two dimensional integral
 	}
 
-	std::cout << "res: " << res << " \n";
+	//std::cout << "res: " << res << " \n";
 
 	MPI_Reduce(&res, &sum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
